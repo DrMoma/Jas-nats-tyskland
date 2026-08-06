@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="nb">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+    <meta name="theme-color" content="#8a5a34" />
+    <title>Tyskland — bildene jeg ikke er på</title>
+    <meta name="description" content="En minnetavle med bildene fra turen til Tyskland." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <div id="board-viewport">
+        <div id="board-surface"></div>
+      </div>
+
+      <!-- Intro. Static markup so it paints on first frame, and it shares the
+           wall background with the board — the wall never changes between the
+           two "pages", which is what makes the transition read as seamless. -->
+      <div id="intro" class="intro">
+        <div class="intro-card">
+          <div class="postcard">
+            <div class="airmail-edge" aria-hidden="true"></div>
+
+            <div class="postcard-head">
+              <p class="postcard-hello">Guten Tag!</p>
+
+              <div class="postcard-marks" aria-hidden="true">
+                <div class="stamp">
+                  <svg viewBox="0 0 40 30" class="stamp-art">
+                    <rect x="4" y="21" width="32" height="2.4" />
+                    <rect x="6" y="11" width="2.6" height="10" />
+                    <rect x="11" y="11" width="2.6" height="10" />
+                    <rect x="16" y="11" width="2.6" height="10" />
+                    <rect x="21" y="11" width="2.6" height="10" />
+                    <rect x="26" y="11" width="2.6" height="10" />
+                    <rect x="31" y="11" width="2.6" height="10" />
+                    <rect x="3" y="8" width="34" height="3" />
+                    <rect x="16" y="3.5" width="8" height="4" />
+                  </svg>
+                  <span class="stamp-country">DEUTSCHLAND</span>
+                  <span class="stamp-value">80</span>
+                </div>
+                <div class="postmark">
+                  <span>LUFTPOST</span>
+                </div>
+              </div>
+            </div>
+
+            <h1 class="postcard-title">Tyskland</h1>
+
+            <p class="postcard-msg">
+              Jeg ble ikke med.<br />
+              Men jeg har sett gjennom hvert eneste bilde
+              så mange ganger at jeg nesten kan huske det selv.
+            </p>
+
+            <p class="postcard-sign">se turen deres — gjennom mine øyne</p>
+
+            <button id="intro-open" class="intro-open" type="button">
+              åpne tavla
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="hint" class="hint is-waiting">Knip for å zoome · dra for å utforske · trykk på et bilde</div>
+
+      <div id="lightbox" class="lightbox" aria-hidden="true">
+        <div class="lightbox-backdrop"></div>
+        <button class="lightbox-close" aria-label="Lukk">✕</button>
+        <div class="lightbox-stage">
+          <img class="lightbox-img" alt="" draggable="false" />
+          <div class="lightbox-spinner"></div>
+        </div>
+        <div class="lightbox-caption">
+          <p class="lightbox-title"></p>
+          <p class="lightbox-meta"></p>
+          <p class="lightbox-counter"></p>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
