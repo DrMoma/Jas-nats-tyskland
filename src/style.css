@@ -1,3 +1,23 @@
+/* Latin subsets, served from our own origin. Caveat is a variable font, so one
+   file covers both weights the board asks for. `swap` means the text is legible
+   immediately and reflows into the handwriting when it lands — on a board that
+   is entirely handwriting, waiting would leave the page blank. */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('/fonts/caveat-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Patrick Hand';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/patrick-hand-latin.woff2') format('woff2');
+}
+
 * {
   box-sizing: border-box;
 }
@@ -70,6 +90,20 @@ body.no-scroll {
   pointer-events: none;
   /* A soft drop shadow so the whole framed board lifts off the wall. */
   filter: drop-shadow(0 18px 30px rgba(40, 26, 12, 0.38));
+}
+
+/* The same shadow, drawn the cheap way — used on phones, where the filter above
+   is ruinous: a CSS filter has to rasterise its entire element into an offscreen
+   buffer, and this element is the whole board (~2000x2700px, so ~48 megapixels
+   at DPR 3), redone every time the scale changes. An outer box-shadow lands in
+   the same place because it is only ever drawn *outside* the border box — the
+   transparent middle lets the pinboard through — and it rasterises per tile. */
+.board-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  display: none;
+  box-shadow: 0 18px 30px rgba(40, 26, 12, 0.38);
 }
 
 .frame-rail {
@@ -517,9 +551,14 @@ body.no-scroll {
 
 /* ---------- Polaroids ---------- */
 
+/* --dx/--dy carry a live drag. They ride the independent `translate` property
+   rather than the transform chain on purpose: `transition` below covers only
+   `transform`, so the lift still eases in while the drag itself stays glued to
+   the finger. See makeDraggable() in board.js. */
 .polaroid {
   position: absolute;
   width: 210px;
+  translate: var(--dx, 0px) var(--dy, 0px);
   transform: translate(-50%, -50%) rotate(var(--rot)) scale(var(--scale));
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
   touch-action: none;
@@ -652,6 +691,7 @@ body.no-scroll {
   width: 140px;
   min-height: 130px;
   padding: 16px 14px;
+  translate: var(--dx, 0px) var(--dy, 0px);
   transform: translate(-50%, -50%) rotate(var(--rot));
   box-shadow: 0 8px 18px -6px rgba(30, 20, 10, 0.35), 0 2px 4px rgba(30, 20, 10, 0.15);
   font-family: 'Caveat', cursive;
@@ -670,8 +710,11 @@ body.no-scroll {
 .sticky.in-view {
   animation: float 8s ease-in-out infinite;
 }
+/* `animation: none`, not `paused` — the float animates the same `translate`
+   property the drag writes to, and a merely-paused animation keeps holding its
+   value and would pin the note in place. */
 .sticky.lifted {
-  animation-play-state: paused;
+  animation: none;
   transform: translate(-50%, -50%) rotate(0deg) scale(1.06);
   box-shadow: 0 20px 30px -10px rgba(30, 20, 10, 0.45);
   z-index: 999 !important;
@@ -869,5 +912,96 @@ body.no-scroll {
   }
   .title-underline path {
     stroke-dashoffset: 0;
+  }
+}
+
+/* ---------- Mobile-lite ----------
+ *
+ * The board is a 1900x2600 surface carrying ~70 objects, and it is redrawn from
+ * scratch every time the scale changes — which is every frame of a pinch. The
+ * effects that sell it as a physical pinboard are all the expensive kind:
+ * filters and blend modes force the browser to rasterise into offscreen buffers
+ * and read pixels back, which costs a desktop GPU nothing and costs a phone the
+ * frame rate.
+ *
+ * Everything below swaps one of those for a cheap equivalent that reads the same
+ * at arm's length. Desktop never enters this block. Keep the query in sync with
+ * LITE_QUERY in device.js, which is how the JS half decides the same thing.
+ */
+@media (hover: none) and (pointer: coarse) {
+  /* The single most expensive thing on the board. See .board-frame::before. */
+  .board-frame {
+    filter: none;
+  }
+  .board-frame::before {
+    display: block;
+  }
+
+  /* Blend modes cannot composite: each one makes the compositor read its
+     backdrop back, which pulls the whole surface off the fast path — so panning
+     repaints instead of just translating. There are ~47 of these.
+     Multiplying by a near-white gradient is close to a no-op anyway; the tape
+     reads through its opacity and shadow, so warming the tint costs nothing. */
+  .tape {
+    mix-blend-mode: normal;
+    background: linear-gradient(180deg, rgba(226, 216, 193, 0.62), rgba(214, 203, 178, 0.42));
+  }
+  .doodle {
+    mix-blend-mode: normal;
+  }
+
+  /* ~42 elements floating forever means ~42 compositor layers, each holding its
+     own texture. Turning them off is what lets the board collapse back into one. */
+  .polaroid.in-view .polaroid-inner,
+  .sticky.in-view {
+    animation: none;
+  }
+
+  /* Blurring a full-screen backdrop is expensive at rest and worse in motion,
+     and both of these are in motion: the intro transitions its blur over 750ms
+     at the exact moment the board is being revealed, and the lightbox's is live
+     under every swipe. Denser veils stand in. */
+  .intro {
+    backdrop-filter: none;
+    background: rgba(28, 26, 22, 0.55);
+    transition: opacity 0.75s ease;
+  }
+  .intro.leaving {
+    backdrop-filter: none;
+  }
+  .lightbox-backdrop {
+    backdrop-filter: none;
+    background: rgba(20, 16, 10, 0.92);
+  }
+  .lightbox-close {
+    backdrop-filter: none;
+    background: rgba(255, 255, 255, 0.18);
+  }
+
+  /* A permanent filter on 30 images is 30 shader passes per raster, for a grade
+     (6% sepia) that is not visible on a phone screen. The develop transition
+     still runs — it just resolves to no filter instead of a faint one. */
+  .polaroid-photo.developed img {
+    filter: none;
+  }
+
+  /* A 200px blur radius over a 1900x2600 box, repainted per tile. The same
+     vignette as a gradient costs a fraction of it. */
+  #board-surface {
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+      radial-gradient(ellipse 78% 66% at 50% 50%, transparent 52%, rgba(90, 70, 40, 0.16) 100%),
+      radial-gradient(ellipse 1100px 750px at 22% 12%, rgba(255, 252, 240, 0.6), transparent 60%),
+      radial-gradient(ellipse 950px 800px at 84% 78%, rgba(255, 250, 230, 0.4), transparent 55%);
+    box-shadow:
+      inset 0 0 0 1px rgba(70, 45, 20, 0.35),
+      inset 0 6px 14px rgba(60, 38, 16, 0.3);
+  }
+
+  /* Three stacked shadows on 30 cards; the widest contributes least. */
+  .polaroid-inner {
+    box-shadow:
+      0 1px 2px rgba(30, 20, 10, 0.15),
+      0 10px 24px -8px rgba(30, 20, 10, 0.35);
   }
 }

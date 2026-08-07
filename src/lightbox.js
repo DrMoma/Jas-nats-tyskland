@@ -1,7 +1,26 @@
+import { IS_LITE, SUPPORTS_WEBP } from './device.js';
+
 // Full-resolution images are fetched only when a photo is actually opened.
 // We cache URL strings, never Image objects — the browser's HTTP cache does the
 // real retaining, so nothing here holds decoded bitmaps alive.
 const loaded = new Set();
+
+/**
+ * The lightbox assigns `img.src` from script, so unlike the polaroids it has no
+ * <picture> element to negotiate formats for it — hence the explicit check.
+ * WebP roughly halves these files (a 750 kB JPEG lands at ~350 kB), which is the
+ * difference between a swipe that feels instant on mobile data and one that does
+ * not.
+ */
+function fullSrc(photo) {
+  return (SUPPORTS_WEBP && photo.fullWebp) || photo.full;
+}
+
+/** The placeholder shown while the full file decodes — whatever is already cached. */
+function previewSrc(photo) {
+  const tier = IS_LITE ? 'small' : 'thumb';
+  return (SUPPORTS_WEBP && photo[`${tier}Webp`]) || photo[tier] || photo.thumb;
+}
 
 const SWIPE_CLOSE_PX = 120;
 const SWIPE_NEXT_PX = 60;
@@ -47,13 +66,14 @@ export class Lightbox {
 
     // Show the thumbnail instantly so the transition never blanks, then swap in
     // the full-resolution file once it has decoded.
+    const full = fullSrc(photo);
     this.img.classList.remove('is-full');
-    this.img.src = photo.thumb;
+    this.img.src = previewSrc(photo);
     this.spinner.classList.add('visible');
 
-    this._loadFull(photo.full).then(() => {
+    this._loadFull(full).then(() => {
       if (this.current !== photo) return; // user moved on while it loaded
-      this.img.src = photo.full;
+      this.img.src = full;
       this.img.classList.add('is-full');
       this.spinner.classList.remove('visible');
     });
@@ -98,7 +118,9 @@ export class Lightbox {
   _preloadNeighbours(index) {
     [index - 1, index + 1].forEach((i) => {
       const photo = this.photos[i];
-      if (photo && !loaded.has(photo.full)) this._loadFull(photo.full);
+      if (!photo) return;
+      const src = fullSrc(photo);
+      if (!loaded.has(src)) this._loadFull(src);
     });
   }
 

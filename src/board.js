@@ -31,6 +31,9 @@ export class Board {
     this.rafId = null;
     this.inertiaId = null;
 
+    this.scaleListeners = [];
+    this.lastNotifiedScale = 1;
+
     this._bind();
     this._measure();
     this._centerInitial();
@@ -51,13 +54,43 @@ export class Board {
   /**
    * The zoom floor is "the whole framed board fits on screen" — you can never
    * zoom out into empty space beyond the frame.
+   *
+   * Viewport geometry is cached here rather than read during a gesture. Both
+   * `clientWidth` and `getBoundingClientRect()` force the browser to flush
+   * style and layout, and the gesture handlers used to call them on every
+   * pointermove — up to 120 times a second on a phone, each one stalling the
+   * frame. The viewport is `inset: 0` inside a `position: fixed` #app, so none
+   * of this can change without a resize, which lands right here.
    */
   _measure() {
     const vw = this.viewport.clientWidth;
     const vh = this.viewport.clientHeight;
+    const rect = this.viewport.getBoundingClientRect();
     const outerW = this.width + this.frame * 2;
     const outerH = this.height + this.frame * 2;
+
+    this.vw = vw;
+    this.vh = vh;
+    this.originX = rect.left;
+    this.originY = rect.top;
     this.minScale = Math.min(vw / outerW, vh / outerH) * 0.94;
+  }
+
+  /**
+   * Notified when the zoom level changes, so callers can react to how much
+   * detail is actually on screen (the polaroids use it to upgrade to a sharper
+   * source once you zoom past the point where the small one holds up).
+   */
+  onScale(fn) {
+    this.scaleListeners.push(fn);
+    fn(this.scale);
+  }
+
+  _notifyScale() {
+    if (this.scale === this.lastNotifiedScale) return;
+    const previous = this.lastNotifiedScale;
+    this.lastNotifiedScale = this.scale;
+    for (const fn of this.scaleListeners) fn(this.scale, previous);
   }
 
   _onResize = () => {
@@ -79,6 +112,7 @@ export class Board {
 
   _apply() {
     this.surface.style.transform = `translate3d(${this.x}px, ${this.y}px, 0) scale(${this.scale})`;
+    this._notifyScale();
   }
 
   /**
@@ -91,8 +125,8 @@ export class Board {
    * physical rather than walled-in).
    */
   _clampPosition() {
-    const vw = this.viewport.clientWidth;
-    const vh = this.viewport.clientHeight;
+    const vw = this.vw;
+    const vh = this.vh;
     const f = this.frame * this.scale;
 
     // this.x positions the content box; the frame sits f outside it.
@@ -191,9 +225,8 @@ export class Board {
   };
 
   _zoomAround(clientX, clientY, nextScale) {
-    const rect = this.viewport.getBoundingClientRect();
-    const px = clientX - rect.left;
-    const py = clientY - rect.top;
+    const px = clientX - this.originX;
+    const py = clientY - this.originY;
     const boardX = (px - this.x) / this.scale;
     const boardY = (py - this.y) / this.scale;
     this.scale = nextScale;
@@ -243,18 +276,38 @@ function mid(a, b) {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
 }
 
-// Makes an element draggable within board space (its x/y are board coordinates,
-// independent of the board's current pan/zoom).
+/**
+ * Makes an element draggable within board space (its x/y are board coordinates,
+ * independent of the board's current pan/zoom).
+ *
+ * The live drag moves the card with a --dx/--dy translate folded into its
+ * existing transform, batched to one write per frame. Writing `left`/`top`
+ * instead — as this used to — invalidates layout for the whole board surface on
+ * every pointermove, and there are ~70 absolutely positioned objects on it.
+ * The offset is folded back into left/top once the finger lifts, so the board
+ * data stays in plain coordinates and nothing downstream has to know about it.
+ */
 export function makeDraggable(el, item, board, onSettle) {
   el.dataset.draggable = 'true';
   let dragging = false;
   let start = null;
   let moved = false;
+  let dx = 0;
+  let dy = 0;
+  let rafId = null;
+
+  const paint = () => {
+    rafId = null;
+    el.style.setProperty('--dx', `${dx}px`);
+    el.style.setProperty('--dy', `${dy}px`);
+  };
 
   el.addEventListener('pointerdown', (e) => {
     e.stopPropagation();
     dragging = true;
     moved = false;
+    dx = 0;
+    dy = 0;
     el.setPointerCapture(e.pointerId);
     start = { x: e.clientX, y: e.clientY, itemX: item.x, itemY: item.y };
     el.classList.add('lifted');
@@ -262,18 +315,29 @@ export function makeDraggable(el, item, board, onSettle) {
 
   el.addEventListener('pointermove', (e) => {
     if (!dragging || !start) return;
-    const dx = (e.clientX - start.x) / board.scale;
-    const dy = (e.clientY - start.y) / board.scale;
+    dx = (e.clientX - start.x) / board.scale;
+    dy = (e.clientY - start.y) / board.scale;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
-    item.x = start.itemX + dx;
-    item.y = start.itemY + dy;
-    el.style.left = `${item.x}px`;
-    el.style.top = `${item.y}px`;
+    if (!rafId) rafId = requestAnimationFrame(paint);
   });
 
-  const end = (e) => {
+  const end = () => {
     if (!dragging) return;
     dragging = false;
+
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+
+    // Settle: one layout write, at the end, instead of one per frame.
+    item.x = start.itemX + dx;
+    item.y = start.itemY + dy;
+    el.style.removeProperty('--dx');
+    el.style.removeProperty('--dy');
+    el.style.left = `${item.x}px`;
+    el.style.top = `${item.y}px`;
+
     el.classList.remove('lifted');
     if (onSettle) onSettle(moved);
   };

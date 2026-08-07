@@ -1,12 +1,40 @@
 // Hand-drawn-looking SVG doodles. Slight path irregularity + a marker filter
 // keep them from reading as vector-perfect.
 
-const FILTER = `
-  <filter id="sketchy">
-    <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="1" seed="3" result="noise" />
-    <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.2" />
-  </filter>
-`;
+import { IS_LITE } from './device.js';
+
+/**
+ * The displacement filter is defined once, in a hidden SVG appended to the
+ * document, and referenced by every doodle. It used to be inlined into all 26
+ * of them under the same id — so 25 copies were parsed only to be ignored.
+ *
+ * On phones it is not installed at all: feTurbulence and feDisplacementMap are
+ * rasterised on the CPU and re-run whenever the board's scale changes, which is
+ * every frame of a pinch. At 40px and half opacity the wobble is not legible
+ * anyway, so the doodles simply render as their (already irregular) paths.
+ */
+const FILTER_ID = 'doodle-sketchy';
+let filterInstalled = false;
+
+function ensureFilter() {
+  if (filterInstalled) return;
+  filterInstalled = true;
+
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  defs.setAttribute('aria-hidden', 'true');
+  defs.setAttribute('width', '0');
+  defs.setAttribute('height', '0');
+  defs.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
+  defs.innerHTML = `
+    <defs>
+      <filter id="${FILTER_ID}">
+        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="1" seed="3" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.2" />
+      </filter>
+    </defs>
+  `;
+  document.body.appendChild(defs);
+}
 
 const PATHS = {
   heart: `<path d="M20 34 C4 22 4 8 16 6 C20 5 20 10 20 10 C20 10 20 5 24 6 C36 8 36 22 20 34 Z" />`,
@@ -23,10 +51,19 @@ const PATHS = {
 
 export function doodleSvg(type) {
   const inner = PATHS[type] || PATHS.circle;
+
+  if (IS_LITE) {
+    return `
+      <svg viewBox="0 0 40 40" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        ${inner}
+      </svg>
+    `;
+  }
+
+  ensureFilter();
   return `
     <svg viewBox="0 0 40 40" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-      <defs>${FILTER}</defs>
-      <g filter="url(#sketchy)">${inner}</g>
+      <g filter="url(#${FILTER_ID})">${inner}</g>
     </svg>
   `;
 }

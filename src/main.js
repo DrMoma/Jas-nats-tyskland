@@ -7,7 +7,7 @@ import {
   TITLE,
 } from './data.js';
 import { Board } from './board.js';
-import { createPolaroid, playIntroDrop } from './polaroid.js';
+import { createPolaroid, playIntroDrop, trackZoom } from './polaroid.js';
 import { createSticky } from './sticky.js';
 import { createTitle } from './title.js';
 import { createFrame } from './frame.js';
@@ -58,6 +58,10 @@ boardData.photos.forEach((photo, i) => {
 fragment.appendChild(createTitle(TITLE));
 fragment.appendChild(createFrame(BOARD_FRAME));
 surface.appendChild(fragment);
+
+// Phones start on a smaller image tier; this is what lets them climb back up
+// when someone zooms in far enough to notice.
+trackZoom(board);
 
 // The hint retires as soon as the user does anything, or after a few seconds.
 // Its clock starts at the reveal, not at load — during the intro there is

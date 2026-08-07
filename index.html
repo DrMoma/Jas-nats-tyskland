@@ -6,11 +6,22 @@
     <meta name="theme-color" content="#8a5a34" />
     <title>Tyskland — bildene jeg ikke er på</title>
     <meta name="description" content="En minnetavle med bildene fra turen til Tyskland." />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Self-hosted rather than fetched from Google: the stylesheet there is
+         render-blocking and sits behind a DNS lookup and a TLS handshake to two
+         separate origins, which on mobile data costs more than the fonts do. -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="/fonts/caveat-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/patrick-hand-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
   </head>
   <body>
