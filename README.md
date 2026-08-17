@@ -32,6 +32,34 @@ Ferdig bundle er ~13 kB gzippet.
 | `src/lightbox.js` | fullskjermvisning med sveip mellom bildene |
 | `src/frame.js` | trerammen (fire lister med gerede hjørner) |
 | `src/intro.js` | postkortet du møter først |
+| `src/draw.js` | tusjen: strekene du tegner rett på tavla (kun PC) |
+| `src/dock.js` | dokken nederst, og de tre appene i den (kun PC) |
+| `src/mac-window.js` | vinduskarmen appene sitter i: tittellinje, tre lys, dra |
+
+### Bare på PC
+
+Alt som kom til med den nye maskinen finnes **bare** når `IS_LITE` er usann.
+Ingenting av det lages på en telefon — verken markup, lyttere eller stiler — så
+mobilutgaven er den samme som før, ned til hver piksel.
+
+| | |
+|---|---|
+| Tusj | trykk og dra på selve tavla, så tegner du. `⌘Z` angrer ett strøk |
+| Dokk | Galleri, Notater og Kalkulator, med papirkurven ytterst til høyre |
+| Papirkurv | tømmer tusjen, ikke tavla |
+| Gave-brev | kortet med voksforseglingen, midt på tavla |
+| Parallakse | bildene sklir litt mot musa, mest de som ligger fremst |
+| Gnister | stjerner og hjerter etter markøren |
+| Hemmeligheter | brettet hjørne på tre av bildene, med tekst under |
+
+Fordi den ene pekeren nå tegner, flyttes tavla med **to fingre på styreflaten**
+(som kommer inn som `wheel`) eller med **tre fingre** på en berøringsskjerm —
+`panPointers` i `src/board.js`. Telefonen står fortsatt på én finger.
+
+Strekene er `<path>`-er i en `<svg>` inni `#board-surface`, ikke et lerret: tavla
+er 1900×2600 inne i en skalert transform, og en bitmap som skulle holde seg skarp
+på 2,5× ville vært ~120 MB tekstur som måtte finnes enten noen tegnet eller ikke.
+Vektorene blir tegnet på nytt i den skalaen tavla tilfeldigvis står i.
 
 ### Ytelse
 

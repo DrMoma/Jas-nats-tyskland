@@ -28,6 +28,9 @@ const board = new Board(viewport, surface, {
   width: BOARD_WIDTH,
   height: BOARD_HEIGHT,
   frame: BOARD_FRAME,
+  // On desktop the single pointer draws instead of panning. See draw.js.
+  panPointers: IS_LITE ? 1 : 3,
+  dblclickZoom: IS_LITE,
 });
 const lightbox = new Lightbox(document.getElementById('lightbox'));
 
@@ -58,8 +61,9 @@ boardData.photos.forEach((photo, i) => {
   );
 });
 
-// Desktop-only: gave-brev card
-const desktopExtras = !IS_LITE ? initDesktopExtras({ board, boardData }) : null;
+// Desktop-only: the letter on the board. The overlay it opens is built below,
+// once the board is mounted; the handler only dereferences it on click.
+let desktopExtras = null;
 if (!IS_LITE && boardData.card) {
   fragment.appendChild(
     createGaveBrevIcon(boardData.card, board, {
@@ -72,6 +76,11 @@ fragment.appendChild(createTitle(TITLE));
 fragment.appendChild(createFrame(BOARD_FRAME));
 surface.appendChild(fragment);
 
+// Marker, dock, parallax and sparkles — after the append, because parallax
+// registers the elements it finds on the board and a DocumentFragment is not
+// the board yet.
+if (!IS_LITE) desktopExtras = initDesktopExtras({ board, boardData, lightbox });
+
 // Phones start on a smaller image tier; this is what lets them climb back up
 // when someone zooms in far enough to notice.
 trackZoom(board);
@@ -80,6 +89,9 @@ trackZoom(board);
 // Its clock starts at the reveal, not at load — during the intro there is
 // nothing yet to pinch or drag.
 const hint = document.getElementById('hint');
+if (!IS_LITE) {
+  hint.textContent = 'Tegn med musa · to fingre for å flytte · trykk på et bilde';
+}
 let hintHidden = false;
 function hideHint() {
   if (hintHidden) return;
@@ -91,6 +103,7 @@ mountIntro({
   onReveal: () => {
     viewport.classList.add('revealed');
     playIntroDrop();
+    desktopExtras?.dock.show();
 
     hint.classList.remove('is-waiting');
     viewport.addEventListener('pointerdown', hideHint, { once: true });

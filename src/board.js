@@ -8,12 +8,21 @@ const MAX_SCALE = 2.5;
 const SLACK = 48;
 
 export class Board {
-  constructor(viewport, surface, { width, height, frame = 0 }) {
+  /**
+   * `panPointers` is how many fingers it takes to move the board. On a phone
+   * that is one, and always has been. On desktop the single pointer is spoken
+   * for — it draws (see draw.js) — so panning moves up to three fingers, and in
+   * practice happens through the trackpad's two-finger scroll, which arrives
+   * here as a wheel event rather than as pointers at all.
+   */
+  constructor(viewport, surface, { width, height, frame = 0, panPointers = 1, dblclickZoom = true }) {
     this.viewport = viewport;
     this.surface = surface;
     this.width = width;
     this.height = height;
     this.frame = frame;
+    this.panPointers = panPointers;
+    this.dblclickZoom = dblclickZoom;
 
     this.x = 0;
     this.y = 0;
@@ -150,32 +159,43 @@ export class Board {
     return Math.min(MAX_SCALE, Math.max(this.minScale, s));
   }
 
+  _startPan() {
+    this.dragging = true;
+    this.lastPan = { ...centroid([...this.pointers.values()]), t: performance.now() };
+    this.velX = 0;
+    this.velY = 0;
+  }
+
+  /**
+   * Re-anchors the pinch to wherever the two fingers are *now*. Seeding it once
+   * on the way in is not enough: dropping from three fingers back to two would
+   * otherwise resume from a distance measured at a scale that has since moved,
+   * and the board would jump.
+   */
+  _seedPinch() {
+    const pts = [...this.pointers.values()];
+    this.dragging = false;
+    this.pinchStartDist = dist(pts[0], pts[1]);
+    this.pinchStartScale = this.scale;
+  }
+
   _onPointerDown = (e) => {
     // Ignore if the gesture started on a draggable item — those handle their own drag.
     if (e.target.closest('[data-draggable]')) return;
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     cancelAnimationFrame(this.inertiaId);
 
-    if (this.pointers.size === 1) {
-      this.dragging = true;
-      this.lastPan = { x: e.clientX, y: e.clientY, t: performance.now() };
-      this.velX = 0;
-      this.velY = 0;
-    } else if (this.pointers.size === 2) {
-      this.dragging = false;
-      const pts = [...this.pointers.values()];
-      this.pinchStartDist = dist(pts[0], pts[1]);
-      this.pinchStartScale = this.scale;
-      this.pinchMid = mid(pts[0], pts[1]);
-    }
+    const n = this.pointers.size;
+    if (n === 2) this._seedPinch();
+    else if (n === this.panPointers) this._startPan();
   };
 
   _onPointerMove = (e) => {
     if (!this.pointers.has(e.pointerId)) return;
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = [...this.pointers.values()];
 
-    if (this.pointers.size === 2) {
-      const pts = [...this.pointers.values()];
+    if (pts.length === 2) {
       const d = dist(pts[0], pts[1]);
       const nextScale = this._clampScale(this.pinchStartScale * (d / this.pinchStartDist));
       const m = mid(pts[0], pts[1]);
@@ -184,23 +204,29 @@ export class Board {
     }
 
     if (this.dragging && this.lastPan) {
-      const dx = e.clientX - this.lastPan.x;
-      const dy = e.clientY - this.lastPan.y;
+      // The centroid, so a three-finger pan does not lurch when one finger
+      // drifts. With a single pointer this is just that pointer.
+      const c = centroid(pts);
+      const dx = c.x - this.lastPan.x;
+      const dy = c.y - this.lastPan.y;
       const now = performance.now();
       const dt = Math.max(now - this.lastPan.t, 1);
       this.velX = dx / dt;
       this.velY = dy / dt;
       this.x += dx;
       this.y += dy;
-      this.lastPan = { x: e.clientX, y: e.clientY, t: now };
+      this.lastPan = { x: c.x, y: c.y, t: now };
       this._scheduleApply();
     }
   };
 
   _onPointerUp = (e) => {
     this.pointers.delete(e.pointerId);
-    if (this.pointers.size < 2) this.pinchStartDist = 0;
-    if (this.pointers.size === 0 && this.dragging) {
+    const n = this.pointers.size;
+    if (n < 2) this.pinchStartDist = 0;
+    else if (n === 2) this._seedPinch();
+
+    if (this.dragging && n < this.panPointers) {
       this.dragging = false;
       this._inertia();
     }
@@ -219,6 +245,8 @@ export class Board {
   };
 
   _onDblClick = (e) => {
+    // Off wherever the pointer is a marker: two quick dots must not also zoom.
+    if (!this.dblclickZoom) return;
     if (e.target.closest('[data-draggable]')) return;
     const target = this.scale < 1.1 ? 1.4 : 0.75;
     this._zoomAround(e.clientX, e.clientY, this._clampScale(target));
@@ -274,6 +302,15 @@ function dist(a, b) {
 }
 function mid(a, b) {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+function centroid(pts) {
+  let x = 0;
+  let y = 0;
+  for (const p of pts) {
+    x += p.x;
+    y += p.y;
+  }
+  return { x: x / pts.length, y: y / pts.length };
 }
 
 /**

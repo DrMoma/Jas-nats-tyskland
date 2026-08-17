@@ -1142,6 +1142,576 @@ body.no-scroll {
   letter-spacing: 0.08em;
 }
 
+/* ---------- Marker ---------- */
+
+/* The sheet the strokes land on. It sits inside #board-surface, so it is panned
+   and zoomed by the same transform as everything else and the ink stays where
+   it was drawn. Above the polaroids on purpose: a line that vanished halfway
+   through because it crossed a photograph reads as a bug, not as depth. */
+.ink-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  overflow: visible;
+  mix-blend-mode: multiply;
+  transition: opacity 0.45s ease;
+}
+
+.ink-layer.is-clearing {
+  opacity: 0;
+}
+
+/* Stroke width is in board units, so the line thickens as you zoom in — the
+   same way a real marker line would. */
+.ink-layer path {
+  fill: none;
+  stroke: #5b5346;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.72;
+}
+
+/* Desktop only; added by draw.js, which is only ever called when !IS_LITE. */
+#board-viewport.can-draw {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M3 21 L7 20 L20.2 6.8 L17.2 3.8 L4 17 Z' fill='%235b5346' stroke='%23fdfaf1' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E")
+      3 21,
+    crosshair;
+}
+
+/* The marker is for the board itself. Over anything you can pick up, the
+   cursor has to go back to saying so. */
+#board-viewport.can-draw .polaroid {
+  cursor: pointer;
+}
+#board-viewport.can-draw .sticky {
+  cursor: grab;
+}
+#board-viewport.can-draw .sticky.lifted {
+  cursor: grabbing;
+}
+
+/* ---------- Dock ---------- */
+
+.dock {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  z-index: 990;
+  translate: -50% 0;
+  transform: translateY(120%);
+  opacity: 0;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+}
+
+.dock.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.dock-panel {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 22px;
+  background: rgba(246, 243, 236, 0.42);
+  backdrop-filter: blur(26px) saturate(180%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 1px 1px rgba(255, 255, 255, 0.35),
+    0 18px 40px -12px rgba(20, 12, 4, 0.55);
+}
+
+.dock-item {
+  position: relative;
+  display: block;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transform-origin: 50% 100%;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dock-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 5px rgba(20, 12, 4, 0.3));
+}
+
+/* Magnification, the whole thing in three selectors: the icon under the cursor
+   and its two neighbours. Doing this in JS would mean measuring every icon
+   against the pointer on every mousemove, and there are already a parallax loop
+   and a sparkle loop on that event. */
+.dock-item:hover {
+  transform: translateY(-13px) scale(1.42);
+}
+.dock-item:hover + .dock-item,
+.dock-item:has(+ .dock-item:hover) {
+  transform: translateY(-6px) scale(1.2);
+}
+
+.dock-item:active {
+  transform: translateY(-9px) scale(1.3);
+}
+
+.dock-label {
+  position: absolute;
+  bottom: calc(100% + 14px);
+  left: 50%;
+  translate: -50% 0;
+  padding: 4px 10px;
+  border-radius: 7px;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 13px;
+  white-space: nowrap;
+  color: #f6f3ec;
+  background: rgba(38, 34, 28, 0.82);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+
+.dock-item:hover .dock-label {
+  opacity: 1;
+}
+
+/* The running dot. It has to counter the icon's own magnification, or it grows
+   into a blob whenever the cursor is over it. */
+.dock-dot {
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  translate: -50% 0;
+  background: rgba(40, 34, 26, 0.62);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.dock-item.is-running .dock-dot {
+  opacity: 1;
+}
+
+.dock-item:hover .dock-dot {
+  scale: 0.7;
+}
+
+.dock-sep {
+  width: 1px;
+  height: 46px;
+  margin: 0 4px 5px;
+  background: rgba(60, 50, 36, 0.24);
+}
+
+/* The bin is a taller-than-wide render, so `contain` fits it by height and it
+   ends up narrower than the square app icons — which is how it looks in the
+   real dock too. */
+.dock-trash .dock-icon {
+  scale: 1.04;
+}
+
+/* The bounce rides the icon rather than the button, so it composes with the
+   magnification the button is already holding under the cursor instead of
+   replacing it — an icon that shrank the instant you clicked it would read as
+   the click failing. */
+.dock-item.is-launching .dock-icon {
+  animation: dock-bounce 0.62s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes dock-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-26px) scale(1.06);
+  }
+  60% {
+    transform: translateY(-4px);
+  }
+  80% {
+    transform: translateY(-10px);
+  }
+}
+
+.dock-item.is-shaking .dock-icon {
+  animation: dock-shake 0.4s ease;
+}
+
+@keyframes dock-shake {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  25% {
+    transform: translateX(-4px) rotate(-7deg);
+  }
+  60% {
+    transform: translateX(4px) rotate(6deg);
+  }
+}
+
+/* The hint sits where the dock now is. */
+body.has-dock .hint {
+  bottom: 108px;
+}
+
+/* ---------- App windows ---------- */
+
+/* Outer node owns the position, inner owns the open/close animation — a drag
+   and a transition on the same transform would fight. */
+.mac-window {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 965;
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease, visibility 0.22s;
+}
+
+.mac-window.open {
+  visibility: visible;
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.mac-window.is-dragging .mac-window-inner {
+  transition: none;
+}
+
+.mac-window-inner {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 11px;
+  background: #f7f5f0;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+    0 0 0 0.5px rgba(0, 0, 0, 0.25),
+    0 26px 60px -14px rgba(16, 10, 2, 0.55),
+    0 12px 24px -12px rgba(16, 10, 2, 0.4);
+  transform: scale(0.94);
+  opacity: 0;
+  transform-origin: 50% 90%;
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+
+.mac-window.open .mac-window-inner {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.mac-titlebar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 12px;
+  background: linear-gradient(180deg, #f0ede6, #e5e1d8);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.11);
+  cursor: default;
+  user-select: none;
+  touch-action: none;
+}
+
+.mac-lights {
+  display: flex;
+  gap: 8px;
+}
+
+.mac-light {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.18);
+}
+
+.mac-close {
+  background: #ff5f57;
+}
+.mac-min {
+  background: #febc2e;
+}
+.mac-zoom {
+  background: #28c840;
+}
+.mac-light.is-disabled {
+  background: #d6d2ca;
+  cursor: default;
+}
+
+.mac-title {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 14px;
+  color: #4b4438;
+  letter-spacing: 0.01em;
+}
+
+.mac-body {
+  display: flex;
+  min-height: 0;
+}
+
+/* ---------- Notater ---------- */
+
+.mac-window-notes .mac-body {
+  height: 340px;
+}
+.mac-window-notes.is-expanded {
+  width: min(760px, 88vw) !important;
+}
+.mac-window-notes.is-expanded .mac-body {
+  height: min(520px, 70vh);
+}
+
+.notes-app {
+  display: flex;
+  width: 100%;
+  font-family: 'Patrick Hand', cursive;
+  color: #3f3a2e;
+}
+
+.notes-sidebar {
+  flex: 0 0 148px;
+  padding: 14px 10px;
+  background: rgba(232, 228, 218, 0.75);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.notes-sidebar-head {
+  margin: 0 0 8px 8px;
+  font-size: 11px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #8c8371;
+}
+
+.notes-folders {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notes-folder {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 15px;
+  color: #4b4438;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.notes-folder:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.notes-folder.is-active {
+  background: #f2c14b;
+  color: #3b3218;
+}
+
+.notes-main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 24px 24px;
+  overflow-y: auto;
+  background: #fdfcf8;
+}
+
+.notes-meta {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: #a09884;
+  letter-spacing: 0.03em;
+}
+
+.notes-title {
+  margin: 0 0 14px;
+  font-family: 'Caveat', cursive;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  color: #3b3527;
+  letter-spacing: 0.04em;
+}
+
+.notes-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notes-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 16px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.notes-check {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px #c3bba6;
+  background: transparent;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.notes-item.is-done .notes-check {
+  background: #d8a13c;
+  box-shadow: inset 0 0 0 1.5px #d8a13c;
+}
+
+/* The tick, drawn rather than shipped as an image. */
+.notes-check::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 8px;
+  margin: 2px 0 0 5.5px;
+  border: solid #fffdf6;
+  border-width: 0 1.8px 1.8px 0;
+  transform: rotate(42deg);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.notes-item.is-done .notes-check::after {
+  opacity: 1;
+}
+
+.notes-item.is-done .notes-text {
+  color: #8e8672;
+}
+
+.notes-foot {
+  margin: 16px 0 0;
+  font-family: 'Caveat', cursive;
+  font-size: 19px;
+  color: #a2564b;
+  opacity: 0.85;
+}
+
+.notes-para {
+  margin: 0 0 12px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: #453f33;
+}
+
+/* ---------- Kalkulator ---------- */
+
+.calc-app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 10px;
+  background: #1c1c1e;
+  outline: none;
+}
+
+.calc-display {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  min-height: 62px;
+  padding: 4px 10px 10px;
+  overflow: hidden;
+}
+
+.calc-value {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 44px;
+  line-height: 1;
+  color: #fbfbfd;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+.calc-value.is-long {
+  font-size: 30px;
+}
+
+.calc-keys {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.calc-key {
+  height: 52px;
+  border: 0;
+  border-radius: 10px;
+  font-family: 'Patrick Hand', cursive;
+  font-size: 21px;
+  color: #fbfbfd;
+  background: #3a3a3c;
+  cursor: pointer;
+  transition: filter 0.12s ease;
+}
+.calc-key:hover {
+  filter: brightness(1.22);
+}
+.calc-key:active {
+  filter: brightness(1.5);
+}
+
+.calc-fn {
+  background: #a5a5a5;
+  color: #16161a;
+}
+
+.calc-op {
+  background: #ff9f0a;
+}
+.calc-op.is-active {
+  background: #fdfbf7;
+  color: #ff9f0a;
+}
+
+.calc-wide {
+  grid-column: span 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock,
+  .dock-item,
+  .mac-window-inner {
+    transition-duration: 0.01ms !important;
+  }
+  .dock-item.is-launching .dock-icon,
+  .dock-item.is-shaking .dock-icon {
+    animation: none !important;
+  }
+  .ink-layer {
+    transition: none;
+  }
+}
+
 /* ---------- Responsive ---------- */
 
 /* Polaroid width stays 210px at every breakpoint — the layout placer in

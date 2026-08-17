@@ -48,8 +48,9 @@ export class GaveBrevOverlay {
         <div class="gave-brev-kicker">ny skjerm, samme tavle</div>
         <h2 class="gave-brev-title">gratulerer med den nye</h2>
         <div class="gave-brev-body">
-          <p>Hørte du fikk deg en ny en.</p>
+          <p>Hørte du fikk deg en ny PC.</p>
           <p>Tavla har sett akkurat like fin ut hele tiden — men nå får den endelig vises på en skjerm som er like god som bildene fortjener.</p>
+          <p>Det ligger noen ting nederst på skjermen også. Ta en titt i notatene.</p>
           <p>Ingen stor greie. Bare en unnskyldning for å åpne denne én gang til.</p>
         </div>
         <div class="gave-brev-sign">fortsatt ikke med på turen — men nå i det minste i bedre oppløsning</div>
