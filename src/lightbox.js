@@ -37,12 +37,16 @@ export class Lightbox {
     this.captionEl = root.querySelector('.lightbox-title');
     this.metaEl = root.querySelector('.lightbox-meta');
     this.counterEl = root.querySelector('.lightbox-counter');
+    this.prevBtn = root.querySelector('.lightbox-prev');
+    this.nextBtn = root.querySelector('.lightbox-next');
 
     this.photos = [];
     this.index = -1;
 
     this.closeBtn.addEventListener('click', () => this.close());
     this.backdrop.addEventListener('click', () => this.close());
+    this.prevBtn.addEventListener('click', () => this.prev());
+    this.nextBtn.addEventListener('click', () => this.next());
     this._bindGestures();
   }
 
@@ -63,6 +67,8 @@ export class Lightbox {
     this.captionEl.textContent = photo.caption || '';
     this.metaEl.textContent = [photo.location, photo.date].filter(Boolean).join(' · ');
     this.counterEl.textContent = `${index + 1} / ${this.photos.length}`;
+    this.prevBtn.hidden = index <= 0;
+    this.nextBtn.hidden = index >= this.photos.length - 1;
 
     // Show the thumbnail instantly so the transition never blanks, then swap in
     // the full-resolution file once it has decoded.
