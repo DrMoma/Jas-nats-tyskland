@@ -12,7 +12,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 
 // Peak travel in board pixels, for an element at full depth with the cursor in
 // a corner. Much more than this and the board stops feeling pinned to a wall.
-const MAX_PX = 10;
+const MAX_PX = 0;
 
 const registry = [];
 let boardRef = null;

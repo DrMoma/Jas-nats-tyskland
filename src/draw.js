@@ -77,8 +77,9 @@ export function initDrawing(board) {
 
   const onDown = (e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    // Cards, notes and the letter handle their own drag.
-    if (e.target.closest('[data-draggable]')) return;
+    // Cards, notes and the letter handle their own drag. Text elements should
+    // stay selectable — the pen must not steal the pointer from them.
+    if (e.target.closest('[data-draggable], input, textarea, [contenteditable], .notes-text, .mac-window')) return;
 
     active.add(e.pointerId);
 
