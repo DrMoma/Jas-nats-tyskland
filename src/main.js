@@ -14,6 +14,9 @@ import { createFrame } from './frame.js';
 import { mountIntro } from './intro.js';
 import { doodleSvg } from './doodles.js';
 import { Lightbox } from './lightbox.js';
+import { IS_LITE } from './device.js';
+import { initDesktopExtras } from './desktop-extras.js';
+import { createGaveBrevIcon } from './gave-brev.js';
 
 const viewport = document.getElementById('board-viewport');
 const surface = document.getElementById('board-surface');
@@ -54,6 +57,16 @@ boardData.photos.forEach((photo, i) => {
     })
   );
 });
+
+// Desktop-only: gave-brev card
+const desktopExtras = !IS_LITE ? initDesktopExtras({ board, boardData }) : null;
+if (!IS_LITE && boardData.card) {
+  fragment.appendChild(
+    createGaveBrevIcon(boardData.card, board, {
+      onOpen: () => desktopExtras.gaveBrevOverlay.open(),
+    })
+  );
+}
 
 fragment.appendChild(createTitle(TITLE));
 fragment.appendChild(createFrame(BOARD_FRAME));

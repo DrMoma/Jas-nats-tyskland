@@ -115,6 +115,12 @@ export function createPolaroid(photo, board, { onOpen }) {
     ? `<div class="tape tape-${photo.tapeSide}" style="--tape-rot:${photo.tapeRotation}deg"></div>`
     : '';
 
+  const secret = !IS_LITE && photo.secret
+    ? `<div class="polaroid-secret" tabindex="0" role="button" aria-label="hemmelig notis">
+         <span class="polaroid-secret-note">${photo.secret}</span>
+       </div>`
+    : '';
+
   // The <source> is left empty until the card is near the screen — a populated
   // srcset would fetch immediately and defeat the lazy loading below.
   const webpSource = photo.thumbWebp ? '<source type="image/webp" />' : '';
@@ -130,6 +136,7 @@ export function createPolaroid(photo, board, { onOpen }) {
         <div class="polaroid-develop"></div>
       </div>
       ${photo.caption ? `<div class="polaroid-caption">${photo.caption}</div>` : ''}
+      ${secret}
     </div>
   `;
 

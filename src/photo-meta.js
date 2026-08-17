@@ -36,7 +36,7 @@ export const PHOTO_META = {
   },
 
   // ── Square, with the focal point pulled up so nobody loses their head.
-  img8840: { focus: [50, 14], caption: 'rødt lys, sen middag' },
+  img8840: { focus: [50, 14], caption: 'rødt lys, sen middag', secret: 'dette bildet så jeg lengst på' },
   img8841: { focus: [50, 50], caption: 'byen om natten' },
   img8842: { focus: [50, 20], caption: 'et helt tak av discokuler' },
   img8847: { focus: [50, 40], caption: 'helt ute av fokus' },
@@ -45,7 +45,7 @@ export const PHOTO_META = {
   img8892: { focus: [50, 42], caption: 'den lange stien i skyggen' },
   img8895: { focus: [50, 10], caption: 'solbrillevær, selvfølgelig' },
   img8896: { focus: [50, 40], caption: 'innsjøen, helt åpen' },
-  img8897: { focus: [50, 45], caption: 'ringer i vannet' },
+  img8897: { focus: [50, 45], caption: 'ringer i vannet', secret: 'skulle ønske jeg hørte hva som ble sagt her' },
   img8899: { focus: [50, 46], caption: '«springen verboten»' },
   img8900: { focus: [50, 42], caption: 'himmelen gjennom løvet' },
   img8901: { focus: [50, 46], caption: 'pizza underveis' },
@@ -53,7 +53,7 @@ export const PHOTO_META = {
   img8905: { focus: [50, 38], caption: 'stearinlys i skumringen' },
   img8907: { focus: [50, 40], caption: 'lyslenken ble tent' },
   img8911: { focus: [50, 28], caption: 'ut av vinduet, over broen' },
-  img8916: { focus: [50, 26], caption: 'hele gjengen' },
+  img8916: { focus: [50, 26], caption: 'hele gjengen', secret: 'nesten som å være der' },
   img8921: { focus: [50, 44], caption: 'solnedgang ved gaten' },
   img8923: { focus: [50, 42], caption: 'våt rullebane' },
   img8924: { focus: [50, 36], caption: 'regn på vinduet' },
@@ -76,5 +76,6 @@ export function metaFor(id) {
     focus: meta.focus || [50, 35],
     caption: meta.caption || '',
     rotate: meta.rotate || 0,
+    secret: meta.secret || '',
   };
 }

@@ -558,7 +558,7 @@ body.no-scroll {
 .polaroid {
   position: absolute;
   width: 210px;
-  translate: var(--dx, 0px) var(--dy, 0px);
+  translate: calc(var(--dx, 0px) + var(--px, 0px)) calc(var(--dy, 0px) + var(--py, 0px));
   transform: translate(-50%, -50%) rotate(var(--rot)) scale(var(--scale));
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
   touch-action: none;
@@ -684,6 +684,57 @@ body.no-scroll {
   margin-left: -35px;
 }
 
+/* ---------- Hover secrets ---------- */
+
+.polaroid-secret {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #fbfaf6 50%, #d8d2c2 52%);
+  clip-path: polygon(0 100%, 100% 100%, 100% 0);
+  cursor: pointer;
+  transition: transform 0.18s ease;
+  z-index: 3;
+}
+
+.polaroid-secret:hover,
+.polaroid-secret:focus-visible {
+  transform: rotate(-4deg) scale(1.05);
+}
+
+.polaroid-secret:focus-visible {
+  outline: 2px solid #a2564b;
+  outline-offset: -3px;
+}
+
+.polaroid-secret-note {
+  position: absolute;
+  right: -2px;
+  bottom: 32px;
+  width: 160px;
+  background: #fbfaf6;
+  padding: 10px 12px;
+  border-radius: 3px;
+  box-shadow: 0 6px 16px -6px rgba(30, 20, 10, 0.4);
+  font-family: 'Caveat', cursive;
+  font-size: 17px;
+  color: #3d3323;
+  opacity: 0;
+  transform: translateY(6px) scale(0.94);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.polaroid-secret:hover .polaroid-secret-note,
+.polaroid-secret:focus-visible .polaroid-secret-note {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
 /* ---------- Sticky notes ---------- */
 
 .sticky {
@@ -738,9 +789,206 @@ body.no-scroll {
   position: absolute;
   color: #5b5346;
   opacity: 0.5;
+  translate: var(--px, 0px) var(--py, 0px);
   transform: translate(-50%, -50%) rotate(var(--rot)) scale(var(--scale));
   pointer-events: none;
   mix-blend-mode: multiply;
+}
+
+/* ---------- Gave-brev ---------- */
+
+.gave-brev {
+  position: absolute;
+  width: 156px;
+  translate: var(--dx, 0px) var(--dy, 0px);
+  transform: translate(-50%, -50%) rotate(var(--rot));
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.gave-brev-inner {
+  position: relative;
+  padding: 16px 14px 20px;
+  background: linear-gradient(160deg, #f5ede0, #e8dcc8);
+  border-radius: 2px;
+  box-shadow:
+    0 1px 2px rgba(30, 20, 10, 0.15),
+    0 10px 24px -8px rgba(30, 20, 10, 0.35),
+    0 24px 40px -20px rgba(30, 20, 10, 0.3);
+  text-align: center;
+}
+
+.gave-brev-seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0 auto;
+}
+
+.gave-brev-seal svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.1));
+}
+
+.gave-brev:hover .gave-brev-inner,
+.gave-brev.lifted .gave-brev-inner {
+  box-shadow:
+    0 2px 4px rgba(30, 20, 10, 0.2),
+    0 30px 50px -15px rgba(30, 20, 10, 0.45);
+}
+
+.gave-brev.lifted {
+  transform: translate(-50%, -50%) rotate(0deg) scale(1.07);
+  z-index: 999 !important;
+}
+
+/* ---------- Gave-brev overlay ---------- */
+
+.gave-brev-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  padding: 24px;
+}
+
+.gave-brev-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.gave-brev-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(20, 16, 10, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.gave-brev-card {
+  position: relative;
+  z-index: 1;
+  width: min(90vw, 500px);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: linear-gradient(168deg, #fdfaf1 0%, #f6efdf 62%, #efe6d2 100%);
+  border-radius: 3px;
+  padding: 32px 28px;
+  box-shadow:
+    0 2px 3px rgba(30, 20, 10, 0.2),
+    0 24px 48px -12px rgba(20, 12, 4, 0.55),
+    0 40px 60px -30px rgba(20, 12, 4, 0.5);
+  opacity: 0;
+  transform: scale(0.92) translateY(12px);
+  transition: opacity 0.35s cubic-bezier(0.33, 1, 0.68, 1), transform 0.35s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.gave-brev-overlay.open .gave-brev-card {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.gave-brev-kicker {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #a2564b;
+  margin: 0 0 8px;
+  opacity: 0.85;
+}
+
+.gave-brev-title {
+  font-family: 'Caveat', cursive;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 0.9;
+  color: #46524a;
+  margin: 0 0 16px;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.gave-brev-body {
+  font-family: 'Patrick Hand', cursive;
+  font-size: 18px;
+  line-height: 1.6;
+  color: #4b4336;
+  margin: 0 0 20px;
+}
+
+.gave-brev-body p {
+  margin: 0 0 12px;
+}
+
+.gave-brev-body p:last-child {
+  margin-bottom: 0;
+}
+
+.gave-brev-sign {
+  font-family: 'Caveat', cursive;
+  font-size: 20px;
+  color: #8a5a34;
+  font-style: italic;
+  text-align: right;
+  margin-top: 16px;
+  opacity: 0.8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gave-brev-overlay {
+    transition: opacity 0.15s ease;
+  }
+  .gave-brev-card {
+    transition: opacity 0.15s ease !important;
+    transform: none !important;
+  }
+  .gave-brev-overlay.open .gave-brev-card {
+    transform: none !important;
+  }
+}
+
+/* ---------- Cursor trail ---------- */
+
+.sparkle-field {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 950;
+}
+
+.sparkle {
+  position: absolute;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.6);
+}
+
+.sparkle-active {
+  animation: sparkle-fade 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes sparkle-fade {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5) translateY(0);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7) translateY(-22px);
+  }
 }
 
 /* ---------- Animations ---------- */

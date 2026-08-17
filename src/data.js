@@ -22,6 +22,9 @@ const IMG_W = POLAROID_W - PAD_X * 2;
 const NOTE_W = 140;
 const NOTE_H = 130;
 
+const CARD_W = 156;
+const CARD_H = 126;
+
 // The title block owns the top of the board; nothing else may sit on it.
 export const TITLE = { x: BOARD_WIDTH / 2, y: 150, w: 760, h: 210 };
 
@@ -35,6 +38,7 @@ const Z = {
   doodle: [0, 9],
   note: [10, 29],
   photo: [30, 70],
+  card: [71, 79],
 };
 
 // Written by someone who only got to look at the photos afterwards — the
@@ -249,12 +253,41 @@ function placeDoodles(rng, photos, notes, count = 26) {
   return doodles;
 }
 
+function placeGaveBrev(rng, photos, notes) {
+  for (let attempt = 0; attempt < 150; attempt++) {
+    const cand = {
+      x: between(rng, BOARD_WIDTH * 0.32, BOARD_WIDTH * 0.68),
+      y: between(rng, TITLE.y + TITLE.h + 80, TITLE.y + TITLE.h + 520),
+    };
+    const rect = { ...cand, w: CARD_W, h: CARD_H };
+
+    if (overlapArea(rect, TITLE) > 0) continue;
+    if (photos.some((p) => centreInside(cand, p.hit))) continue;
+    if (notes.some((n) => overlapArea(rect, { x: n.x, y: n.y, w: NOTE_W, h: NOTE_H }) > 0))
+      continue;
+
+    const covered = photos.reduce((sum, p) => sum + overlapArea(rect, p.hit), 0) / (CARD_W * CARD_H);
+    if (covered > 0.35) continue;
+
+    return {
+      id: 'gave-brev',
+      x: cand.x,
+      y: cand.y,
+      rotation: between(rng, -6, 6),
+      z: Math.floor(between(rng, Z.card[0], Z.card[1])),
+    };
+  }
+
+  return null;
+}
+
 function buildBoard(seed) {
   const rng = makeRng(seed);
   const photos = placePhotos(rng);
   const notes = placeNotes(rng, photos);
   const doodles = placeDoodles(rng, photos, notes);
-  return { photos, notes, doodles };
+  const card = placeGaveBrev(rng, photos, notes);
+  return { photos, notes, doodles, card };
 }
 
 export const board = buildBoard(20260805);
@@ -271,5 +304,14 @@ if (import.meta.env?.DEV) {
   );
   if (violations.length) {
     console.warn('[board] notes covering photo centres:', violations);
+  }
+  if (board.card) {
+    const cardViolations = board.photos.some((p) =>
+      Math.abs(board.card.x - p.x) < p.hit.w * 0.35 &&
+      Math.abs(board.card.y - p.y) < p.hit.h * 0.3
+    );
+    if (cardViolations) {
+      console.warn('[board] card covering photo centre');
+    }
   }
 }
